@@ -9,8 +9,8 @@ using System.Data;
 
 namespace InvestCloud
 {
-    internal class InvestCloud
-    {                
+    public class InvestCloud
+    {
         HttpClient client = new HttpClient();
         private int size;
         public int[,] Alpha;
@@ -31,9 +31,10 @@ namespace InvestCloud
             client.BaseAddress = new Uri("https://recruitment-test.investcloud.com/");
             string url = $"api/numbers/init/{size}";
 
-            string result = await InitializeMatrix(url); //API GET to init the two arrays
+            await InitializeMatrix(url); //API GET to init the two arrays
             BuildMatrix(); //build two matrixes in memory O(n^2)
             MatrixMulitiplicationHash(Alpha, Beta); //0(n^3) and Md5 hash
+            //MatrixMulitiplicationHashTotal();
             await POSTSolution(hashedSolution); //API POST to validate
             timeEnd = DateTime.Now;
             await Console.Out.WriteLineAsync($"{IsSuccess} Response from API with a runtime of {Math.Round((timeEnd - timeStart).TotalMinutes, 2)} minutes.");
@@ -122,7 +123,7 @@ namespace InvestCloud
                     //concatenated string of the matrix' contents (left-toright,top - to - bottom)
 
                     resultMatrixSB.Append(result[i, j]);
-                }              
+                }
             }
             //Md5 hashing
             using (MD5 md5 = MD5.Create())
@@ -137,6 +138,40 @@ namespace InvestCloud
                 }
                 hashedSolution = hashedBuilder.ToString();
             }
-        }    
+        }
+        public void MatrixMulitiplicationHashTotal() //One Pass without the extra memory needed for initializing Alpha and Beta           
+        {
+            int[,] result = new int[size, size];
+            StringBuilder resultMatrixSB = new StringBuilder();
+            for (int i = 0; i < size; i++)
+            {
+                var MatrixLineAlpha = GetElement("A", "col", i).Result;
+
+                for (int j = 0; j < size; j++)
+                {
+                    var MatrixLineBeta = GetElement("B", "row", j).Result;
+
+                    for (int k = 0; k < size; k++)
+                    {
+                        result[i, j] += MatrixLineAlpha[k] * MatrixLineBeta[k];
+                    }
+                    //concatenated string of the matrix' contents (left-toright,top - to - bottom)
+
+                    resultMatrixSB.Append(result[i, j]);
+                }
+            }
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] input = Encoding.ASCII.GetBytes(resultMatrixSB.ToString());
+                byte[] hashed = md5.ComputeHash(input);
+
+                StringBuilder hashedBuilder = new StringBuilder();
+                for (int i = 0; i < hashed.Length; i++)
+                {
+                    hashedBuilder.Append(hashed[i].ToString("X2"));
+                }
+                hashedSolution = hashedBuilder.ToString();
+            }
+        }
     }
 }
